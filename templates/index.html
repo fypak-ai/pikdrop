@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PikDrop — PikPak → Dropbox</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --red: #ff5555;
+    --text: #e8e8f0;
+    --muted: #888;
+    --success: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header span { color: var(--accent); }
+  .arrow { color: var(--accent2); font-size: 1.2rem; }
+
+  .main { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 60px); }
+
+  /* Left panel */
+  .sidebar {
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+
+  /* Right panel */
+  .content { display: flex; flex-direction: column; overflow: hidden; }
+  .toolbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .file-area { flex: 1; overflow-y: auto; padding: 16px; }
+
+  /* Inputs */
+  input[type=text], input[type=email], input[type=password] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    outline: none;
+    transition: border .2s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  /* Buttons */
+  button {
+    border: none; border-radius: 6px; cursor: pointer;
+    font-size: 0.85rem; padding: 8px 14px; font-weight: 600;
+    transition: opacity .15s, transform .1s;
+  }
+  button:hover { opacity: .85; }
+  button:active { transform: scale(.97); }
+  .btn-primary   { background: var(--accent); color: #fff; }
+  .btn-success   { background: var(--accent2); color: #000; }
+  .btn-danger    { background: var(--red); color: #fff; }
+  .btn-sm        { padding: 5px 10px; font-size: 0.78rem; }
+  .btn-outline   { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+  /* Status badges */
+  .badge {
+    display: inline-block; border-radius: 100px;
+    padding: 2px 10px; font-size: 0.72rem; font-weight: 700;
+  }
+  .badge-ok      { background: #14532d; color: #86efac; }
+  .badge-err     { background: #450a0a; color: #fca5a5; }
+  .badge-idle    { background: #1e1b4b; color: #a5b4fc; }
+
+  /* File list */
+  .file-list { display: flex; flex-direction: column; gap: 4px; }
+  .file-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color .15s;
+    user-select: none;
+  }
+  .file-item:hover { border-color: var(--accent); }
+  .file-item.selected { border-color: var(--accent); background: #1e1b4b44; }
+  .file-icon { font-size: 1.4rem; min-width: 28px; text-align: center; }
+  .file-name { flex: 1; font-size: 0.88rem; word-break: break-all; }
+  .file-meta { color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.8rem; color: var(--muted);
+    padding: 8px 0; flex-wrap: wrap;
+  }
+  .breadcrumb span { cursor: pointer; color: var(--accent); }
+  .breadcrumb span:hover { text-decoration: underline; }
+
+  /* Progress */
+  .progress-wrap {
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-top: 12px;
+  }
+  .progress-bar-bg {
+    background: var(--border);
+    border-radius: 100px;
+    height: 8px;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 100px;
+    transition: width .4s;
+  }
+  .log-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    max-height: 180px;
+    overflow-y: auto;
+    font-size: 0.78rem;
+    font-family: monospace;
+    color: #aaa;
+    margin-top: 8px;
+  }
+  .log-box p { margin-bottom: 2px; }
+  .log-box p.ok  { color: var(--success); }
+  .log-box p.err { color: var(--red); }
+
+  /* Tabs */
+  .tab-row { display: flex; gap: 4px; margin-bottom: 12px; }
+  .tab-btn { flex: 1; padding: 6px; border-radius: 6px; font-size: 0.8rem; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .hint { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; line-height: 1.4; }
+
+  .select-bar {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.82rem; color: var(--muted);
+  }
+  .select-bar strong { color: var(--text); }
+
+  .dest-input { display: flex; gap: 8px; align-items: center; }
+  .dest-input input { margin-bottom: 0; flex: 1; }
+
+  @media(max-width:700px) {
+    .main { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 45vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:1.6rem">☁</div>
+  <h1>Pik<span>Drop</span></h1>
+  <div class="arrow">→</div>
+  <div style="font-size:1.6rem">📦</div>
+  <div style="margin-left:auto; font-size:.8rem; color:var(--muted)">PikPak → Dropbox</div>
+</header>
+
+<div class="main">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────── -->
+  <div class="sidebar">
+
+    <!-- PikPak Auth -->
+    <div class="sidebar-section">
+      <h3>PikPak <span id="ppBadge" class="badge badge-idle">desconectado</span></h3>
+      <div id="ppTabRow" class="tab-row">
+        <button class="tab-btn active" onclick="switchPPTab('login')">Login</button>
+        <button class="tab-btn" onclick="switchPPTab('token')">Token</button>
+      </div>
+      <div id="ppLoginForm">
+        <input id="ppEmail" type="email" placeholder="Email PikPak"/>
+        <input id="ppPass"  type="password" placeholder="Senha"/>
+        <button class="btn-primary" style="width:100%" onclick="pikpakLogin()">Entrar</button>
+      </div>
+      <div id="ppTokenForm" style="display:none">
+        <p class="hint">Cole o Bearer token (sem a palavra "Bearer")</p>
+        <input id="ppToken" type="text" placeholder="eyJhbGci…"/>
+        <button class="btn-primary" style="width:100%" onclick="pikpakSetToken()">Usar token</button>
+      </div>
+      <div id="ppMsg" style="font-size:.8rem;margin-top:6px;"></div>
+    </div>
+
+    <!-- Dropbox Auth -->
+    <div class="sidebar-section">
+      <h3>Dropbox <span id="dbBadge" class="badge badge-idle">desconectado</span></h3>
+      <p class="hint">Gere um token em dropbox.com/developers/apps → Permissions (files.content.write + read) → Settings → Generate token</p>
+      <input id="dbToken" type="text" placeholder="sl.u.AGUO…"/>
+      <button class="btn-success" style="width:100%" onclick="dropboxTest()">Testar & Salvar</button>
+      <div id="dbMsg" style="font-size:.8rem;margin-top:6px;"></div>
+    </div>
+
+    <!-- Destination folder -->
+    <div class="sidebar-section">
+      <h3>Pasta Destino (Dropbox)</h3>
+      <div class="dest-input">
+        <input id="destFolder" type="text" value="/PikPak" placeholder="/PikPak"/>
+      </div>
+    </div>
+
+    <!-- Transfer controls -->
+    <div class="sidebar-section" style="flex:1;overflow-y:auto">
+      <h3>Transferência</h3>
+      <div class="select-bar" style="margin-bottom:10px">
+        <strong id="selCount">0</strong> arquivo(s) selecionado(s)
+        <button class="btn-sm btn-outline" onclick="clearSelection()">Limpar</button>
+      </div>
+      <button class="btn-success" style="width:100%;margin-bottom:8px" onclick="startTransfer()">▶ Iniciar Transferência</button>
+      <button class="btn-danger btn-sm" style="width:100%" onclick="cancelTransfer()">✕ Cancelar</button>
+
+      <div id="progressWrap" class="progress-wrap" style="display:none">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem">
+          <span id="progressLabel">Aguardando…</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="log-box" id="logBox"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── CONTENT ─────────────────────────────────────── -->
+  <div class="content">
+    <div class="toolbar">
+      <div class="breadcrumb" id="breadcrumb">
+        <span onclick="navTo('','Início')">🏠 Início</span>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn-sm btn-outline" onclick="selectAll()">Selecionar todos</button>
+        <button class="btn-sm btn-primary" onclick="loadFiles()">🔄 Atualizar</button>
+      </div>
+    </div>
+    <div class="file-area">
+      <div id="fileList" class="file-list">
+        <div style="color:var(--muted);font-size:.88rem;padding:20px;text-align:center">
+          Conecte ao PikPak e clique em Atualizar para ver seus arquivos.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let currentParentId = "";
+let breadcrumbStack = [{ id: "", name: "Início" }];
+let selectedFiles   = {};   // id -> { id, name }
+let currentJobId    = null;
+let pollTimer       = null;
+
+// ── PikPak Login ─────────────────────────────────────────────────────────────
+function switchPPTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('ppLoginForm').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('ppTokenForm').style.display = tab === 'token'  ? '' : 'none';
+}
+
+async function pikpakLogin() {
+  const email = document.getElementById('ppEmail').value.trim();
+  const pass  = document.getElementById('ppPass').value.trim();
+  setMsg('ppMsg', '⏳ Autenticando…', '#aaa');
+  const r = await fetch('/api/pikpak/login', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ username: email, password: pass })
+  });
+  const d = await r.json();
+  if (d.ok) {
+    setBadge('ppBadge', 'conectado', 'ok');
+    setMsg('ppMsg', `✅ Logado`, '#22c55e');
+    loadFiles();
+  } else {
+    setBadge('ppBadge', 'erro', 'err');
+    setMsg('ppMsg', '❌ ' + d.error, '#ff5555');
+  }
+}
+
+async function pikpakSetToken() {
+  const token = document.getElementById('ppToken').value.trim();
+  const r = await fetch('/api/pikpak/set_token', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ token })
+  });
+  const d = await r.json();
+  if (d.ok) {
+    setBadge('ppBadge', 'conectado', 'ok');
+    setMsg('ppMsg', '✅ Token salvo', '#22c55e');
+    loadFiles();
+  } else {
+    setMsg('ppMsg', '❌ ' + d.error, '#ff5555');
+  }
+}
+
+// ── Dropbox ───────────────────────────────────────────────────────────────────
+async function dropboxTest() {
+  const token = document.getElementById('dbToken').value.trim();
+  setMsg('dbMsg', '⏳ Testando…', '#aaa');
+  const r = await fetch('/api/dropbox/test', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ token })
+  });
+  const d = await r.json();
+  if (d.ok) {
+    setBadge('dbBadge', 'conectado', 'ok');
+    setMsg('dbMsg', `✅ ${d.name} (${d.email})`, '#22c55e');
+  } else {
+    setBadge('dbBadge', 'erro', 'err');
+    setMsg('dbMsg', '❌ ' + d.error, '#ff5555');
+  }
+}
+
+// ── File browser ──────────────────────────────────────────────────────────────
+async function loadFiles(parentId, nextToken) {
+  parentId  = parentId  !== undefined ? parentId  : currentParentId;
+  nextToken = nextToken !== undefined ? nextToken : "";
+  const listEl = document.getElementById('fileList');
+  if (!nextToken) listEl.innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">⏳ Carregando…</div>';
+
+  const params = new URLSearchParams({ parent_id: parentId });
+  if (nextToken) params.set('page_token', nextToken);
+
+  const r = await fetch('/api/pikpak/files?' + params);
+  if (r.status === 401) {
+    listEl.innerHTML = '<div style="color:#ff5555;padding:20px;text-align:center">Conecte ao PikPak primeiro.</div>';
+    return;
+  }
+  const d = await r.json();
+  if (d.error) {
+    listEl.innerHTML = `<div style="color:#ff5555;padding:20px">${d.error}</div>`;
+    return;
+  }
+
+  const files = d.files || [];
+  if (!nextToken) listEl.innerHTML = '';
+
+  if (!files.length && !nextToken) {
+    listEl.innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">Pasta vazia.</div>';
+    return;
+  }
+
+  files.forEach(f => {
+    const isFolder = f.kind === 'drive#folder';
+    const icon     = isFolder ? '📁' : fileIcon(f.name);
+    const sizeStr  = !isFolder && f.size ? formatSize(f.size) : '';
+    const div = document.createElement('div');
+    div.className = 'file-item' + (selectedFiles[f.id] ? ' selected' : '');
+    div.dataset.id = f.id;
+    div.innerHTML = `
+      <div class="file-icon">${icon}</div>
+      <div class="file-name">${f.name}</div>
+      <div class="file-meta">${sizeStr}</div>
+    `;
+    div.onclick = (e) => {
+      if (isFolder) { enterFolder(f.id, f.name); return; }
+      toggleSelect(f.id, f.name, div);
+    };
+    listEl.appendChild(div);
+  });
+
+  // Pagination
+  if (d.next_page_token) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-outline btn-sm';
+    btn.style = 'margin:12px auto;display:block';
+    btn.textContent = 'Carregar mais…';
+    btn.onclick = () => { btn.remove(); loadFiles(parentId, d.next_page_token); };
+    listEl.appendChild(btn);
+  }
+}
+
+function enterFolder(id, name) {
+  currentParentId = id;
+  breadcrumbStack.push({ id, name });
+  renderBreadcrumb();
+  loadFiles(id);
+}
+
+function navTo(id, name) {
+  const idx = breadcrumbStack.findIndex(b => b.id === id);
+  if (idx >= 0) breadcrumbStack = breadcrumbStack.slice(0, idx + 1);
+  else breadcrumbStack = [{ id: '', name: 'Início' }];
+  currentParentId = id;
+  renderBreadcrumb();
+  loadFiles(id);
+}
+
+function renderBreadcrumb() {
+  const el = document.getElementById('breadcrumb');
+  el.innerHTML = breadcrumbStack.map((b, i) => {
+    const sep = i > 0 ? '<span style="color:var(--muted)"> / </span>' : '';
+    return `${sep}<span onclick="navTo('${b.id}','${b.name}')">${i === 0 ? '🏠 ' : ''}${b.name}</span>`;
+  }).join('');
+}
+
+function toggleSelect(id, name, el) {
+  if (selectedFiles[id]) {
+    delete selectedFiles[id];
+    el.classList.remove('selected');
+  } else {
+    selectedFiles[id] = { id, name };
+    el.classList.add('selected');
+  }
+  document.getElementById('selCount').textContent = Object.keys(selectedFiles).length;
+}
+
+function selectAll() {
+  document.querySelectorAll('.file-item').forEach(el => {
+    const id   = el.dataset.id;
+    const name = el.querySelector('.file-name').textContent;
+    if (!el.querySelector('.file-icon').textContent.includes('📁')) {
+      selectedFiles[id] = { id, name };
+      el.classList.add('selected');
+    }
+  });
+  document.getElementById('selCount').textContent = Object.keys(selectedFiles).length;
+}
+
+function clearSelection() {
+  selectedFiles = {};
+  document.querySelectorAll('.file-item.selected').forEach(el => el.classList.remove('selected'));
+  document.getElementById('selCount').textContent = 0;
+}
+
+// ── Transfer ──────────────────────────────────────────────────────────────────
+async function startTransfer() {
+  const ids = Object.keys(selectedFiles);
+  if (!ids.length) { alert('Selecione ao menos um arquivo.'); return; }
+  const dest = document.getElementById('destFolder').value.trim() || '/PikPak';
+
+  document.getElementById('progressWrap').style.display = '';
+  setProgress(0, `Iniciando ${ids.length} arquivo(s)…`);
+  clearLog();
+
+  const r = await fetch('/api/transfer/start', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ file_ids: ids, dest_folder: dest })
+  });
+  const d = await r.json();
+  if (!d.ok) { appendLog('❌ ' + (d.error || 'Erro desconhecido'), 'err'); return; }
+  currentJobId = d.job_id;
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollStatus, 1500);
+}
+
+async function pollStatus() {
+  if (!currentJobId) return;
+  const r = await fetch(`/api/transfer/status/${currentJobId}`);
+  const d = await r.json();
+  if (d.error) return;
+
+  const pct = d.total > 0 ? Math.round((d.done / d.total) * 100) : 0;
+  setProgress(pct, `${d.done}/${d.total} — ${d.status}`);
+
+  const logBox = document.getElementById('logBox');
+  logBox.innerHTML = '';
+  (d.log || []).forEach(line => {
+    const p = document.createElement('p');
+    p.className = line.startsWith('✅') ? 'ok' : line.startsWith('❌') ? 'err' : '';
+    p.textContent = line;
+    logBox.appendChild(p);
+  });
+  logBox.scrollTop = logBox.scrollHeight;
+
+  if (['done', 'failed', 'cancelled'].includes(d.status)) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+    if (d.status === 'done') {
+      setProgress(100, `✅ Concluído — ${d.done} arquivo(s) enviado(s)`);
+    }
+  }
+}
+
+async function cancelTransfer() {
+  if (!currentJobId) return;
+  await fetch(`/api/transfer/cancel/${currentJobId}`, { method: 'POST' });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setProgress(pct, label) {
+  document.getElementById('progressFill').style.width  = pct + '%';
+  document.getElementById('progressPct').textContent   = pct + '%';
+  document.getElementById('progressLabel').textContent = label;
+}
+function clearLog() { document.getElementById('logBox').innerHTML = ''; }
+function appendLog(msg, cls) {
+  const p = document.createElement('p');
+  p.className = cls || '';
+  p.textContent = msg;
+  document.getElementById('logBox').appendChild(p);
+}
+function setMsg(id, msg, color) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.color = color;
+}
+function setBadge(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'badge badge-' + type;
+}
+function formatSize(bytes) {
+  if (!bytes) return '';
+  bytes = parseInt(bytes);
+  if (bytes > 1e9) return (bytes/1e9).toFixed(1) + ' GB';
+  if (bytes > 1e6) return (bytes/1e6).toFixed(1) + ' MB';
+  if (bytes > 1e3) return (bytes/1e3).toFixed(0) + ' KB';
+  return bytes + ' B';
+}
+function fileIcon(name) {
+  if (!name) return '📄';
+  const ext = name.split('.').pop().toLowerCase();
+  const map = {
+    mp4:'🎬', mkv:'🎬', avi:'🎬', mov:'🎬', webm:'🎬',
+    mp3:'🎵', flac:'🎵', wav:'🎵', aac:'🎵',
+    jpg:'🖼', jpeg:'🖼', png:'🖼', gif:'🖼', webp:'🖼',
+    pdf:'📕', zip:'🗜', rar:'🗜', '7z':'🗜',
+    txt:'📝', doc:'📝', docx:'📝',
+  };
+  return map[ext] || '📄';
+}
+</script>
+</body>
+</html>
