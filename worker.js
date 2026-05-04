@@ -20,8 +20,8 @@ async function handleRequest(request) {
 
   const url = new URL(request.url)
   // Expect: https://your-worker.workers.dev/?https://api-drive.mypikpak.com/...
-  const target = url.searchParams.get('url') ||
-                 decodeURIComponent(url.pathname.slice(1) + url.search.replace(/^\?url=/,''))
+  const rawSearch = url.search.slice(1) // strip leading '?'
+  const target = url.searchParams.get('url') || decodeURIComponent(rawSearch)
 
   // Security: only allow PikPak domains
   const ALLOWED = ['mypikpak.com', 'user.mypikpak.com', 'api-drive.mypikpak.com']
