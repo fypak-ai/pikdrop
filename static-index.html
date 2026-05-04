@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>PikDrop — PikPak → Dropbox</title>
 <style>
-:root{--bg:#0f0f13;--card:#1a1a24;--border:#2a2a3a;--accent:#6c63ff;--accent2:#00d4aa;--red:#ff5555;--text:#e8e8f0;--muted:#888;--ok:#22c55e}
+:root{--bg:#0f0f13;--card:#1a1a24;--border:#2a2a3a;--accent:#6c63ff;--accent2:#00d4aa;--red:#ff5555;--text:#e8e8f0;--muted:#888;--ok:#22c55e;--warn:#fbbf24}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
 a{color:var(--accent)}
 
-/* ── Layout ── */
 header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 22px;display:flex;align-items:center;gap:10px}
 header h1{font-size:1.35rem;font-weight:700}
 header span.brand{color:var(--accent)}
@@ -23,13 +22,11 @@ header span.brand{color:var(--accent)}
 .toolbar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .files{flex:1;overflow-y:auto;padding:14px}
 
-/* ── Form ── */
-input[type=text],input[type=email],input[type=password]{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 11px;font-size:.83rem;margin-bottom:7px;outline:none;transition:border .15s}
-input:focus{border-color:var(--accent)}
+input[type=text],input[type=email],input[type=password],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 11px;font-size:.83rem;margin-bottom:7px;outline:none;transition:border .15s;resize:vertical}
+input:focus,textarea:focus{border-color:var(--accent)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .row2 input{margin-bottom:0}
 
-/* ── Buttons ── */
 button{border:none;border-radius:6px;cursor:pointer;font-size:.82rem;padding:7px 13px;font-weight:600;transition:opacity .15s,transform .1s}
 button:hover{opacity:.82}
 button:active{transform:scale(.97)}
@@ -38,21 +35,20 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .bs{background:var(--accent2);color:#000}
 .bd{background:var(--red);color:#fff}
 .bo{background:transparent;border:1px solid var(--border);color:var(--text)}
+.bw{background:#f59e0b;color:#000}
 .bsm{padding:5px 10px;font-size:.76rem}
-.bw{width:100%;margin-bottom:6px}
+.bfull{width:100%;margin-bottom:6px}
 
-/* ── Badges ── */
 .badge{display:inline-block;border-radius:100px;padding:1px 9px;font-size:.7rem;font-weight:700}
 .b-ok{background:#14532d;color:#86efac}
 .b-err{background:#450a0a;color:#fca5a5}
 .b-idle{background:#1e1b4b;color:#a5b4fc}
+.b-warn{background:#451a03;color:#fcd34d}
 
-/* ── Tabs ── */
 .tabs{display:flex;gap:4px;margin-bottom:10px}
 .tab{flex:1;padding:5px;border-radius:5px;font-size:.77rem;background:var(--bg);color:var(--muted);border:1px solid var(--border);cursor:pointer}
 .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 
-/* ── File list ── */
 .file-list{display:flex;flex-direction:column;gap:3px}
 .fi{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;background:var(--card);border:1px solid var(--border);cursor:pointer;transition:border-color .15s;user-select:none}
 .fi:hover{border-color:var(--accent)}
@@ -61,12 +57,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .fi-name{flex:1;font-size:.85rem;word-break:break-all;line-height:1.3}
 .fi-meta{color:var(--muted);font-size:.73rem;white-space:nowrap}
 
-/* ── Breadcrumb ── */
 .bc{display:flex;align-items:center;gap:3px;font-size:.78rem;color:var(--muted);padding:8px 0;flex-wrap:wrap}
 .bc span{cursor:pointer;color:var(--accent)}
 .bc span:hover{text-decoration:underline}
 
-/* ── Progress ── */
 .prog-wrap{margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px}
 .prog-bar-bg{background:var(--border);border-radius:100px;height:7px;overflow:hidden;margin:9px 0}
 .prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:100px;transition:width .4s;width:0%}
@@ -74,21 +68,24 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .log p{margin-bottom:1px}
 .log .ok{color:var(--ok)}
 .log .err{color:var(--red)}
-.log .warn{color:#fbbf24}
+.log .warn{color:var(--warn)}
 
-/* ── Misc ── */
 .hint{font-size:.73rem;color:var(--muted);margin-bottom:8px;line-height:1.4}
 .sel-bar{display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--muted);margin-bottom:9px}
 .sel-bar strong{color:var(--text)}
-.msg{font-size:.78rem;margin-top:5px}
+.msg{font-size:.78rem;margin-top:5px;line-height:1.5}
 .dest-row{display:flex;gap:6px}
 .dest-row input{margin-bottom:0;flex:1}
 .notice{background:#1e1b4b44;border:1px solid var(--accent);border-radius:6px;padding:10px 12px;font-size:.8rem;line-height:1.5;margin-bottom:10px}
+.warn-box{background:#451a0344;border:1px solid var(--warn);border-radius:6px;padding:9px 12px;font-size:.79rem;line-height:1.5;margin-bottom:8px;color:var(--warn)}
 .empty{color:var(--muted);font-size:.85rem;padding:30px;text-align:center}
+.exp-tag{font-size:.72rem;padding:2px 7px;border-radius:4px;margin-left:5px}
+.exp-ok{background:#14532d;color:#86efac}
+.exp-bad{background:#450a0a;color:#fca5a5}
 
 @media(max-width:660px){
   .main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-  .sidebar{max-height:50vh;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar{max-height:55vh;border-right:none;border-bottom:1px solid var(--border)}
 }
 </style>
 </head>
@@ -99,7 +96,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <h1>Pik<span class="brand">Drop</span></h1>
   <div class="arrow">→</div>
   <div style="font-size:1.5rem">📦</div>
-  <div style="margin-left:auto;font-size:.75rem;color:var(--muted)">PikPak → Dropbox · static edition</div>
+  <div style="margin-left:auto;font-size:.75rem;color:var(--muted)">PikPak → Dropbox · static</div>
 </header>
 
 <div class="main">
@@ -110,31 +107,42 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <!-- PikPak -->
   <div class="sec">
     <h3>PikPak <span id="ppBadge" class="badge b-idle">desconectado</span></h3>
+
     <div class="tabs">
-      <button class="tab on" onclick="ppTab('login',this)">Login</button>
-      <button class="tab"    onclick="ppTab('token',this)">Token</button>
+      <button class="tab" id="tabLogin" onclick="ppTab('login',this)">Email/Senha</button>
+      <button class="tab on" id="tabToken" onclick="ppTab('token',this)">Bearer Token ✓</button>
     </div>
-    <div id="ppLoginForm">
+
+    <div id="ppLoginForm" style="display:none">
+      <p class="hint">⚠ Login por email pode falhar por CORS. Use o Bearer Token se der erro.</p>
       <div class="row2">
         <input id="ppEmail" type="email"    placeholder="Email"/>
         <input id="ppPass"  type="password" placeholder="Senha"/>
       </div>
-      <button class="bp bw" style="margin-top:6px" onclick="ppLogin()">Entrar</button>
+      <button class="bp bfull" style="margin-top:6px" onclick="ppLogin()">Entrar</button>
     </div>
-    <div id="ppTokenForm" style="display:none">
-      <p class="hint">Cole o Bearer token (sem "Bearer ")</p>
-      <input id="ppTokenIn" type="text" placeholder="eyJhbGci…"/>
-      <button class="bp bw" onclick="ppSetToken()">Usar token</button>
+
+    <div id="ppTokenForm">
+      <p class="hint">Cole o Bearer token. Tokens PikPak expiram em ~2 horas — gere um novo se der erro 401.</p>
+      <p class="hint">🔑 <strong>Como obter:</strong> abra o PikPak no browser, F12 → Network → qualquer requisição → copie o header <code>Authorization</code></p>
+      <textarea id="ppTokenIn" rows="3" placeholder="Cole aqui (com ou sem 'Bearer ')"></textarea>
+      <div id="ppExpiry" style="margin-bottom:7px"></div>
+      <div style="display:flex;gap:6px">
+        <button class="bp" style="flex:1" onclick="ppSetToken()">💾 Salvar token</button>
+        <button class="bw bsm" onclick="ppVerify()">🔍 Testar</button>
+      </div>
     </div>
+
     <div id="ppMsg" class="msg"></div>
   </div>
 
   <!-- Dropbox -->
   <div class="sec">
     <h3>Dropbox <span id="dbBadge" class="badge b-idle">desconectado</span></h3>
-    <p class="hint">Gere o token em <a href="https://www.dropbox.com/developers/apps" target="_blank">dropbox.com/developers</a><br>Permissões necessárias: <code>files.content.write</code> + <code>files.content.read</code> + <strong><code>sharing.write</code></strong> → marque ANTES de gerar</p>
+    <p class="hint">Gere em <a href="https://www.dropbox.com/developers/apps" target="_blank">dropbox.com/developers</a><br>
+    Permissões <strong>antes</strong> de gerar: <code>files.content.write</code> + <code>files.content.read</code></p>
     <input id="dbTokenIn" type="text" placeholder="sl.u.AGUO…"/>
-    <button class="bs bw" onclick="dbTest()">Testar & Salvar</button>
+    <button class="bs bfull" onclick="dbTest()">🔍 Testar & Salvar</button>
     <div id="dbMsg" class="msg"></div>
   </div>
 
@@ -150,15 +158,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <div class="sec" style="flex:1">
     <h3>Transferência</h3>
     <div class="notice">
-      💡 <strong>Modo Server-to-Server</strong><br>
-      O Dropbox baixa os arquivos diretamente do PikPak — sem passar pelo browser. Funciona com arquivos grandes!
+      💡 <strong>Server-to-Server</strong><br>
+      O Dropbox baixa direto do PikPak — sem passar pelo browser.
     </div>
     <div class="sel-bar">
       <strong id="selCount">0</strong> selecionado(s)
       <button class="bo bsm" onclick="clearSel()">Limpar</button>
     </div>
-    <button class="bs bw" onclick="startTransfer()">▶ Iniciar Transferência</button>
-    <button class="bd bsm bw" onclick="cancelAll()">✕ Cancelar todos</button>
+    <button class="bs bfull" onclick="startTransfer()">▶ Iniciar Transferência</button>
+    <button class="bd bsm bfull" onclick="cancelAll()">✕ Cancelar tudo</button>
 
     <div id="progWrap" style="display:none" class="prog-wrap">
       <div style="display:flex;justify-content:space-between;font-size:.78rem">
@@ -183,7 +191,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   </div>
   <div class="files">
     <div id="fileList" class="file-list">
-      <div class="empty">Conecte ao PikPak e clique em Atualizar.</div>
+      <div class="empty">Cole o Bearer Token do PikPak → Salvar → Atualizar</div>
     </div>
   </div>
 </div>
@@ -193,30 +201,51 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <script>
 'use strict';
 
-// ── Config ──────────────────────────────────────────────────────────────────
-const PROXY   = 'https://corsproxy.io/?';
+// ── Config ───────────────────────────────────────────────────────────────────
+const PROXIES = [
+  url => 'https://corsproxy.io/?' + encodeURIComponent(url),
+  url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+];
 const PP_AUTH = 'https://user.mypikpak.com/v1/auth/signin';
 const PP_API  = 'https://api-drive.mypikpak.com';
 const PP_CID  = 'YUMx5nI8ZU8Ap8pm';
 const PP_SEC  = 'dbw2OAv3zbb7TavDEsGSA7uTany';
 const DBX     = 'https://api.dropboxapi.com/2';
 
-// ── State ───────────────────────────────────────────────────────────────────
+// ── State ────────────────────────────────────────────────────────────────────
 let ppToken  = localStorage.getItem('pp_token') || '';
 let dbToken  = localStorage.getItem('db_token') || '';
-let selected = {};          // id → {id, name, size}
+let selected = {};
 let crumbs   = [{id:'',name:'Início'}];
-let jobs     = {};          // async_job_id → {name, status}
-let pollTimer = null;
+let jobs     = {};
+let activeProxy = 0;
 
-// ── Init ────────────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────
 window.onload = () => {
-  if (ppToken) { badge('ppBadge','conectado','ok'); setMsg('ppMsg','✅ Token carregado','var(--ok)'); }
-  if (dbToken) { badge('dbBadge','conectado','ok'); document.getElementById('dbTokenIn').value=dbToken; }
+  if (ppToken) {
+    $('ppTokenIn').value = ppToken;
+    showExpiry(ppToken);
+    if (!isExpired(ppToken)) {
+      badge('ppBadge','conectado','ok');
+      setMsg('ppMsg','✅ Token carregado','var(--ok)');
+    } else {
+      badge('ppBadge','expirado','warn');
+      setMsg('ppMsg','⚠ Token expirado — cole um novo','var(--warn)');
+    }
+  }
+  if (dbToken) {
+    badge('dbBadge','conectado','ok');
+    $('dbTokenIn').value = dbToken;
+  }
+
+  // Auto-strip on paste
+  $('ppTokenIn').addEventListener('input', () => {
+    showExpiry($('ppTokenIn').value.trim().replace(/^Bearer\s+/i,''));
+  });
 };
 
-// ── UI helpers ───────────────────────────────────────────────────────────────
-const $  = id => document.getElementById(id);
+// ── UI Helpers ────────────────────────────────────────────────────────────────
+const $      = id => document.getElementById(id);
 const setMsg = (id,t,c) => { $(id).textContent=t; $(id).style.color=c||''; };
 const badge  = (id,t,s) => { const e=$(id); e.textContent=t; e.className='badge b-'+s; };
 
@@ -227,19 +256,56 @@ function ppTab(name, btn) {
   $('ppTokenForm').style.display = name==='token'?'':'none';
 }
 
-// ── Proxy fetch ──────────────────────────────────────────────────────────────
-async function proxyFetch(url, opts={}) {
-  const proxied = PROXY + encodeURIComponent(url);
-  const res = await fetch(proxied, opts);
-  if (!res.ok) {
-    let msg = res.statusText;
-    try { const d=await res.clone().json(); msg = d.error_description||d.error||d.message||msg; } catch(e){}
-    throw new Error(`${res.status}: ${msg}`);
-  }
-  return res.json();
+// ── JWT helpers ───────────────────────────────────────────────────────────────
+function decodeJWT(token) {
+  try {
+    const raw = token.split('.')[1];
+    const padded = raw.replace(/-/g,'+').replace(/_/g,'/') + '=='.slice((raw.length+2)%4||2);
+    return JSON.parse(atob(padded));
+  } catch(e) { return null; }
+}
+function isExpired(token) {
+  const p = decodeJWT(token);
+  if (!p || !p.exp) return false;
+  return Date.now()/1000 > p.exp;
+}
+function showExpiry(token) {
+  const p = decodeJWT(token);
+  const el = $('ppExpiry');
+  if (!p || !p.exp) { el.innerHTML=''; return; }
+  const exp = new Date(p.exp * 1000);
+  const now = Date.now();
+  const expired = now/1000 > p.exp;
+  const diff = Math.round((p.exp - now/1000)/60);
+  const label = expired
+    ? `❌ Expirado em ${exp.toLocaleTimeString('pt-BR')} — gere um novo token`
+    : `✅ Válido por mais ${diff} min (expira ${exp.toLocaleTimeString('pt-BR')})`;
+  el.innerHTML = `<span class="exp-tag ${expired?'exp-bad':'exp-ok'}">${label}</span>`;
 }
 
-// ── PikPak Auth ──────────────────────────────────────────────────────────────
+// ── Proxy fetch with fallback ──────────────────────────────────────────────────
+async function proxyFetch(url, opts={}, proxyIdx=0) {
+  if (proxyIdx >= PROXIES.length) throw new Error('Todos os proxies falharam — verifique sua conexão');
+  const proxied = PROXIES[proxyIdx](url);
+  try {
+    const res = await fetch(proxied, {...opts, signal: AbortSignal.timeout(15000)});
+    if (!res.ok) {
+      let msg = res.statusText;
+      try { const d=await res.clone().json(); msg = d.error_description||d.error||d.message||msg; } catch(e){}
+      if (res.status===401) throw new Error('TOKEN_EXPIRED:'+msg);
+      if (res.status===429) throw new Error('Rate limit — aguarde e tente de novo');
+      throw new Error(`${res.status}: ${msg}`);
+    }
+    activeProxy = proxyIdx;
+    return res.json();
+  } catch(e) {
+    if (e.message.startsWith('TOKEN_EXPIRED')) throw e;
+    // Try next proxy
+    return proxyFetch(url, opts, proxyIdx+1);
+  }
+}
+
+// ── PikPak Auth ───────────────────────────────────────────────────────────────
 async function ppLogin() {
   const email = $('ppEmail').value.trim();
   const pass  = $('ppPass').value.trim();
@@ -253,38 +319,73 @@ async function ppLogin() {
     });
     ppToken = d.access_token;
     localStorage.setItem('pp_token', ppToken);
+    $('ppTokenIn').value = ppToken;
+    showExpiry(ppToken);
     badge('ppBadge','conectado','ok');
     setMsg('ppMsg','✅ Logado','var(--ok)');
     loadFiles();
   } catch(e) {
     badge('ppBadge','erro','err');
-    setMsg('ppMsg','❌ '+e.message,'var(--red)');
+    const msg = e.message.includes('TOKEN_EXPIRED')
+      ? '❌ Token expirado — gere um novo' : '❌ '+e.message;
+    setMsg('ppMsg', msg, 'var(--red)');
   }
 }
 
 function ppSetToken() {
-  const t = $('ppTokenIn').value.trim().replace(/^Bearer\s+/i,'');
-  if (!t) return setMsg('ppMsg','Token vazio','var(--red)');
-  ppToken = t;
+  const raw = $('ppTokenIn').value.trim().replace(/^Bearer\s+/i,'');
+  if (!raw) return setMsg('ppMsg','Cole o token primeiro','var(--red)');
+  if (isExpired(raw)) {
+    setMsg('ppMsg','⚠ Este token já expirou! Tokens PikPak duram ~2h. Cole um token novo.','var(--warn)');
+    badge('ppBadge','expirado','warn');
+    return;
+  }
+  ppToken = raw;
   localStorage.setItem('pp_token', ppToken);
   badge('ppBadge','conectado','ok');
   setMsg('ppMsg','✅ Token salvo','var(--ok)');
-  loadFiles();
 }
 
-// ── Dropbox Auth ─────────────────────────────────────────────────────────────
+async function ppVerify() {
+  const raw = $('ppTokenIn').value.trim().replace(/^Bearer\s+/i,'');
+  if (!raw) return setMsg('ppMsg','Cole o token primeiro','var(--red)');
+  if (isExpired(raw)) {
+    setMsg('ppMsg','❌ Token expirado (pela data de validade do JWT). Gere um novo.','var(--red)');
+    badge('ppBadge','expirado','warn');
+    return;
+  }
+  setMsg('ppMsg','⏳ Testando token…','var(--muted)');
+  try {
+    const params = new URLSearchParams({parent_id:'',limit:1,filters:JSON.stringify({trashed:{eq:false}})});
+    await proxyFetch(PP_API+'/drive/v1/files?'+params, {headers:{'Authorization':'Bearer '+raw}});
+    ppToken = raw;
+    localStorage.setItem('pp_token', ppToken);
+    badge('ppBadge','conectado','ok');
+    setMsg('ppMsg','✅ Token válido e funcionando!','var(--ok)');
+    loadFiles();
+  } catch(e) {
+    badge('ppBadge','erro','err');
+    if (e.message.includes('TOKEN_EXPIRED') || e.message.includes('401')) {
+      setMsg('ppMsg','❌ Token recusado (401) — provavelmente expirado. Cole um novo.','var(--red)');
+    } else {
+      setMsg('ppMsg','❌ '+e.message,'var(--red)');
+    }
+  }
+}
+
+// ── Dropbox Auth ──────────────────────────────────────────────────────────────
 async function dbTest() {
   const t = $('dbTokenIn').value.trim();
   if (!t) return setMsg('dbMsg','Token vazio','var(--red)');
   setMsg('dbMsg','⏳ Verificando…','var(--muted)');
   try {
-    const d = await fetch(DBX+'/users/get_current_account', {
+    const r = await fetch(DBX+'/users/get_current_account', {
       method:'POST',
       headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},
       body:'null'
     });
-    if (!d.ok) throw new Error((await d.json()).error_summary||d.statusText);
-    const u = await d.json();
+    if (!r.ok) throw new Error((await r.json()).error_summary||r.statusText);
+    const u = await r.json();
     dbToken = t;
     localStorage.setItem('db_token', dbToken);
     badge('dbBadge','conectado','ok');
@@ -295,35 +396,35 @@ async function dbTest() {
   }
 }
 
-// ── PikPak File Browser ───────────────────────────────────────────────────────
+// ── File Browser ──────────────────────────────────────────────────────────────
 async function loadFiles(parentId, pageToken) {
-  parentId  = parentId  !== undefined ? parentId  : crumbs[crumbs.length-1].id;
+  parentId  = parentId !== undefined ? parentId : crumbs[crumbs.length-1].id;
   pageToken = pageToken || '';
   const list = $('fileList');
   if (!pageToken) list.innerHTML='<div class="empty">⏳ Carregando…</div>';
-  if (!ppToken) { list.innerHTML='<div class="empty" style="color:var(--red)">Conecte ao PikPak primeiro.</div>'; return; }
-
+  if (!ppToken) {
+    list.innerHTML='<div class="empty" style="color:var(--red)">Cole o Bearer Token do PikPak e clique em Salvar.</div>';
+    return;
+  }
+  if (isExpired(ppToken)) {
+    list.innerHTML='<div class="empty" style="color:var(--warn)">⚠ Token PikPak expirado. Cole um novo token na barra lateral.</div>';
+    badge('ppBadge','expirado','warn');
+    return;
+  }
   try {
     const params = new URLSearchParams({
       parent_id: parentId,
-      thumbnail_size: 'SIZE_SMALL',
+      thumbnail_size:'SIZE_SMALL',
       filters: JSON.stringify({trashed:{eq:false}}),
       limit: 100
     });
     if (pageToken) params.set('page_token', pageToken);
-
     const data = await proxyFetch(PP_API+'/drive/v1/files?'+params, {
       headers:{'Authorization':'Bearer '+ppToken}
     });
-
     if (!pageToken) list.innerHTML='';
     const files = data.files||[];
-
-    if (!files.length && !pageToken) {
-      list.innerHTML='<div class="empty">Pasta vazia.</div>';
-      return;
-    }
-
+    if (!files.length && !pageToken) { list.innerHTML='<div class="empty">Pasta vazia.</div>'; return; }
     files.forEach(f => {
       const isDir = f.kind==='drive#folder';
       const icon  = isDir ? '📁' : getIcon(f.name);
@@ -331,17 +432,13 @@ async function loadFiles(parentId, pageToken) {
       const div   = document.createElement('div');
       div.className = 'fi'+(selected[f.id]?' sel':'');
       div.dataset.id = f.id;
-      div.innerHTML = `
-        <div class="fi-icon">${icon}</div>
-        <div class="fi-name">${esc(f.name)}</div>
-        <div class="fi-meta">${size}</div>`;
+      div.innerHTML = `<div class="fi-icon">${icon}</div><div class="fi-name">${esc(f.name)}</div><div class="fi-meta">${size}</div>`;
       div.onclick = () => {
         if (isDir) { enterFolder(f.id, f.name); return; }
         toggleSel(f.id, {id:f.id, name:f.name, size:f.size}, div);
       };
       list.appendChild(div);
     });
-
     if (data.next_page_token) {
       const btn = document.createElement('button');
       btn.className='bo bsm'; btn.style='margin:12px auto;display:block';
@@ -350,84 +447,71 @@ async function loadFiles(parentId, pageToken) {
       list.appendChild(btn);
     }
   } catch(e) {
-    list.innerHTML=`<div class="empty" style="color:var(--red)">Erro: ${esc(e.message)}</div>`;
+    if (e.message.includes('TOKEN_EXPIRED') || e.message.includes('401')) {
+      list.innerHTML='<div class="empty" style="color:var(--warn)">⚠ Token expirado — cole um novo na barra lateral.</div>';
+      badge('ppBadge','expirado','warn');
+      setMsg('ppMsg','⚠ Token expirado. Tokens duram ~2h — gere um novo.','var(--warn)');
+    } else {
+      list.innerHTML=`<div class="empty" style="color:var(--red)">Erro: ${esc(e.message)}</div>`;
+    }
   }
 }
 
-function enterFolder(id, name) {
-  crumbs.push({id,name});
-  renderBc();
-  loadFiles(id);
-}
-
+function enterFolder(id, name) { crumbs.push({id,name}); renderBc(); loadFiles(id); }
 function navTo(id, name) {
   const idx = crumbs.findIndex(c=>c.id===id);
   crumbs = idx>=0 ? crumbs.slice(0,idx+1) : [{id:'',name:'Início'}];
-  renderBc();
-  loadFiles(id);
+  renderBc(); loadFiles(id);
 }
-
 function renderBc() {
   $('bc').innerHTML = crumbs.map((c,i)=>{
     const sep = i>0?'<span style="color:var(--muted)"> / </span>':'';
     return `${sep}<span onclick="navTo('${c.id}','${esc(c.name)}')">${i===0?'🏠 ':''}${esc(c.name)}</span>`;
   }).join('');
 }
-
 function toggleSel(id, info, el) {
   if (selected[id]) { delete selected[id]; el.classList.remove('sel'); }
   else              { selected[id]=info;    el.classList.add('sel'); }
   $('selCount').textContent = Object.keys(selected).length;
 }
-
 function selAll() {
   document.querySelectorAll('.fi').forEach(el=>{
-    const icon = el.querySelector('.fi-icon').textContent;
-    if (icon==='📁') return;
-    const id   = el.dataset.id;
-    const name = el.querySelector('.fi-name').textContent;
-    selected[id]={id,name};
+    if (el.querySelector('.fi-icon').textContent==='📁') return;
+    const id = el.dataset.id;
+    selected[id]={id, name:el.querySelector('.fi-name').textContent};
     el.classList.add('sel');
   });
   $('selCount').textContent = Object.keys(selected).length;
 }
-
 function clearSel() {
   selected={};
   document.querySelectorAll('.fi.sel').forEach(e=>e.classList.remove('sel'));
   $('selCount').textContent=0;
 }
 
-// ── Transfer ──────────────────────────────────────────────────────────────────
+// ── Transfer ───────────────────────────────────────────────────────────────────
 async function startTransfer() {
   const ids = Object.keys(selected);
   if (!ids.length)  return alert('Selecione ao menos um arquivo.');
-  if (!ppToken)     return alert('Conecte ao PikPak primeiro.');
+  if (!ppToken)     return alert('Cole o token PikPak primeiro.');
+  if (isExpired(ppToken)) return alert('Token PikPak expirado! Cole um novo token.');
   if (!dbToken)     return alert('Configure o Dropbox primeiro.');
-
   const dest = $('destFolder').value.trim() || '/PikPak';
   $('progWrap').style.display='';
-  clearLog();
-  jobs={};
-  setProgress(0,`Iniciando ${ids.length} arquivo(s)…`);
-
+  clearLog(); jobs={};
+  setProgress(0, `Iniciando ${ids.length} arquivo(s)…`);
   let done=0, errors=0;
   for (const id of ids) {
     const info = selected[id];
     logLine(`⬇ Obtendo URL: ${info.name}`);
     try {
-      // 1. Get download URL from PikPak
       const fdata = await proxyFetch(PP_API+'/drive/v1/files/'+id, {
         headers:{'Authorization':'Bearer '+ppToken}
       });
-      const url = fdata.web_content_link ||
-                  ((fdata.medias||[{}])[0].link||{}).url || '';
-      if (!url) throw new Error('URL de download vazia (arquivo pode ter expirado)');
-
+      const url = fdata.web_content_link || ((fdata.medias||[{}])[0].link||{}).url || '';
+      if (!url) throw new Error('URL vazia — arquivo pode ter expirado');
       const fname = fdata.name||info.name;
-      logLine(`📤 Enviando "${fname}" → Dropbox via save_url…`, 'warn');
-
-      // 2. Tell Dropbox to download the URL directly (server-to-server)
+      logLine(`📤 "${fname}" → Dropbox (server-to-server)…`, 'warn');
       const dbPath = dest.replace(/\/$/,'')+'/'+fname;
       const sRes = await fetch(DBX+'/files/save_url', {
         method:'POST',
@@ -435,41 +519,36 @@ async function startTransfer() {
         body:JSON.stringify({path:dbPath, url})
       });
       const sData = await sRes.json();
-
       if (sData['.tag']==='complete') {
         logLine(`✅ Salvo em ${sData.path_display||dbPath}`, 'ok');
         done++;
       } else if (sData['.tag']==='async_job_id') {
-        jobs[sData.async_job_id] = {name:fname, path:dbPath, status:'running'};
-        logLine(`⏳ "${fname}" em progresso (job: ${sData.async_job_id.slice(0,8)}…)`, 'warn');
+        jobs[sData.async_job_id]={name:fname, path:dbPath, status:'running'};
+        logLine(`⏳ "${fname}" em fila (job ${sData.async_job_id.slice(0,8)}…)`, 'warn');
       } else {
-        throw new Error(JSON.stringify(sData));
+        throw new Error(JSON.stringify(sData.error||sData));
       }
     } catch(e) {
-      logLine(`❌ Erro em "${info.name}": ${e.message}`, 'err');
-      errors++;
+      const msg = e.message.includes('TOKEN_EXPIRED')||e.message.includes('401')
+        ? `❌ Token PikPak expirou durante a transferência. Gere um novo e tente de novo.`
+        : `❌ Erro em "${info.name}": ${e.message}`;
+      logLine(msg, 'err'); errors++;
     }
-    const pct = Math.round(((done+errors)/ids.length)*80);
-    setProgress(pct, `${done+errors}/${ids.length} processados…`);
+    setProgress(Math.round(((done+errors)/ids.length)*80), `${done+errors}/${ids.length} processados…`);
   }
-
-  // Poll async jobs
   if (Object.keys(jobs).length) {
-    logLine(`⏳ Aguardando ${Object.keys(jobs).length} job(s) assíncronos do Dropbox…`, 'warn');
+    logLine(`⏳ Aguardando ${Object.keys(jobs).length} job(s) assíncronos…`, 'warn');
     await pollJobs(done, errors, ids.length);
   } else {
-    setProgress(100, `✅ Concluído — ${done} enviado(s)${errors?' · '+errors+' erro(s)':''}`);
+    setProgress(100, `✅ ${done} enviado(s)${errors?' · '+errors+' erro(s)':''}`);
   }
 }
 
 async function pollJobs(doneSoFar, errorsSoFar, total) {
-  let attempts = 0;
-  while (attempts < 60) {
+  for (let i=0; i<60; i++) {
     await sleep(3000);
-    attempts++;
     const pending = Object.entries(jobs).filter(([,v])=>v.status==='running');
     if (!pending.length) break;
-
     for (const [jid, info] of pending) {
       try {
         const r = await fetch(DBX+'/files/save_url/check_job_status', {
@@ -478,67 +557,27 @@ async function pollJobs(doneSoFar, errorsSoFar, total) {
           body:JSON.stringify({async_job_id:jid})
         });
         const d = await r.json();
-        if (d['.tag']==='complete') {
-          jobs[jid].status='done';
-          doneSoFar++;
-          logLine(`✅ "${info.name}" salvo em ${d.path_display||info.path}`, 'ok');
-        } else if (d['.tag']==='failed') {
-          jobs[jid].status='failed';
-          errorsSoFar++;
-          logLine(`❌ "${info.name}" falhou: ${JSON.stringify(d.failed||d)}`, 'err');
-        }
-        // else still in_progress → keep polling
-      } catch(e) { /* ignore transient */ }
+        if (d['.tag']==='complete')      { jobs[jid].status='done';   doneSoFar++;   logLine(`✅ "${info.name}" salvo`, 'ok'); }
+        else if (d['.tag']==='failed')   { jobs[jid].status='failed'; errorsSoFar++; logLine(`❌ "${info.name}" falhou: ${JSON.stringify(d.failed||d)}`, 'err'); }
+      } catch(e) { /* transient */ }
     }
-
-    const remaining = Object.values(jobs).filter(v=>v.status==='running').length;
-    const finished  = doneSoFar + errorsSoFar;
-    const pct = Math.min(99, 80 + Math.round((finished/total)*20));
-    setProgress(pct, `${finished}/${total} concluídos · ${remaining} pendente(s)…`);
-    if (!remaining) break;
+    const rem = Object.values(jobs).filter(v=>v.status==='running').length;
+    setProgress(Math.min(99,80+Math.round(((doneSoFar+errorsSoFar)/total)*20)), `${doneSoFar+errorsSoFar}/${total} · ${rem} pendente(s)…`);
+    if (!rem) break;
   }
-  setProgress(100, `✅ Concluído — ${doneSoFar} enviado(s)${errorsSoFar?' · '+errorsSoFar+' erro(s)':''}`);
+  setProgress(100, `✅ ${doneSoFar} enviado(s)${errorsSoFar?' · '+errorsSoFar+' erro(s)':''}`);
 }
 
-function cancelAll() {
-  jobs={}; clearInterval(pollTimer);
-  logLine('🚫 Cancelado pelo usuário.', 'warn');
-  setProgress(0,'Cancelado');
-}
+function cancelAll() { jobs={}; logLine('🚫 Cancelado.','warn'); setProgress(0,'Cancelado'); }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function setProgress(pct,label) {
-  $('progFill').style.width=pct+'%';
-  $('progPct').textContent=pct+'%';
-  $('progLabel').textContent=label;
-}
-function clearLog() { $('logBox').innerHTML=''; }
-function logLine(msg, cls) {
-  const p=document.createElement('p');
-  if(cls) p.className=cls;
-  p.textContent=msg;
-  $('logBox').appendChild(p);
-  $('logBox').scrollTop=9999;
-}
-function fmtSize(b) {
-  b=parseInt(b);
-  if(b>1e9) return (b/1e9).toFixed(1)+' GB';
-  if(b>1e6) return (b/1e6).toFixed(1)+' MB';
-  if(b>1e3) return (b/1e3).toFixed(0)+' KB';
-  return b+' B';
-}
-function getIcon(n='') {
-  const e=n.split('.').pop().toLowerCase();
-  return {mp4:'🎬',mkv:'🎬',avi:'🎬',mov:'🎬',webm:'🎬',
-          mp3:'🎵',flac:'🎵',wav:'🎵',aac:'🎵',
-          jpg:'🖼',jpeg:'🖼',png:'🖼',gif:'🖼',webp:'🖼',
-          pdf:'📕',zip:'🗜',rar:'🗜','7z':'🗜',
-          txt:'📝',doc:'📝',docx:'📝',srt:'📝'}[e]||'📄';
-}
-function esc(s='') {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+// ── Utils ──────────────────────────────────────────────────────────────────────
+function setProgress(pct,label){ $('progFill').style.width=pct+'%'; $('progPct').textContent=pct+'%'; $('progLabel').textContent=label; }
+function clearLog(){ $('logBox').innerHTML=''; }
+function logLine(msg,cls){ const p=document.createElement('p'); if(cls) p.className=cls; p.textContent=msg; $('logBox').appendChild(p); $('logBox').scrollTop=9999; }
+function fmtSize(b){ b=parseInt(b); if(b>1e9) return (b/1e9).toFixed(1)+' GB'; if(b>1e6) return (b/1e6).toFixed(1)+' MB'; if(b>1e3) return (b/1e3).toFixed(0)+' KB'; return b+' B'; }
+function getIcon(n=''){ const e=n.split('.').pop().toLowerCase(); return {mp4:'🎬',mkv:'🎬',avi:'🎬',mov:'🎬',webm:'🎬',mp3:'🎵',flac:'🎵',wav:'🎵',aac:'🎵',jpg:'🖼',jpeg:'🖼',png:'🖼',gif:'🖼',webp:'🖼',pdf:'📕',zip:'🗜',rar:'🗜','7z':'🗜',txt:'📝',doc:'📝',docx:'📝',srt:'📝'}[e]||'📄'; }
+function esc(s=''){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 </script>
 </body>
 </html>
