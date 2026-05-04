@@ -104,6 +104,31 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <!-- ══ SIDEBAR ══════════════════════════════════════════════ -->
 <div class="sidebar">
 
+  <!-- Proxy -->
+  <div class="sec" style="background:#1a1a0e;border-left:3px solid var(--warn)">
+    <h3>🔧 Proxy CORS <span id="proxyBadge" class="badge b-idle">não configurado</span></h3>
+    <p class="hint" style="color:var(--warn);margin-bottom:8px">⚠ Proxies públicos não repassam o header Authorization. Configure seu próprio proxy para o app funcionar.</p>
+    <p class="hint">Cole a URL do seu <strong>Cloudflare Worker</strong> (veja instruções abaixo):</p>
+    <input id="proxyUrl" type="text" placeholder="https://pikdrop.SEU-USUARIO.workers.dev/?"/>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button class="bw" style="flex:1" onclick="saveProxy()">💾 Salvar</button>
+      <button class="bo bsm" onclick="clearProxy()">✕</button>
+    </div>
+    <details style="margin-top:4px">
+      <summary style="font-size:.75rem;color:var(--accent);cursor:pointer;margin-bottom:6px">📖 Como criar o Worker (5 min, grátis)</summary>
+      <div class="hint" style="color:var(--text);line-height:1.7">
+        1. Acesse <a href="https://workers.cloudflare.com" target="_blank">workers.cloudflare.com</a> → conta grátis<br>
+        2. <strong>New Worker</strong> → apague o código padrão<br>
+        3. Cole o código do arquivo <code>worker.js</code> do GitHub<br>
+        4. Clique <strong>Save & Deploy</strong><br>
+        5. Copie a URL (ex: <code>pikdrop.xxx.workers.dev</code>)<br>
+        6. Cole acima com <code>/?</code> no final<br><br>
+        🔗 <a href="https://raw.githubusercontent.com/fypak-ai/pikdrop/main/worker.js" target="_blank">Ver código do worker.js</a>
+      </div>
+    </details>
+    <div id="proxyMsg" class="msg"></div>
+  </div>
+
   <!-- PikPak -->
   <div class="sec">
     <h3>PikPak <span id="ppBadge" class="badge b-idle">desconectado</span></h3>
@@ -202,10 +227,16 @@ button:disabled{opacity:.4;cursor:not-allowed}
 'use strict';
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const PROXIES = [
-  url => 'https://corsproxy.io/?' + encodeURIComponent(url),
-  url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-];
+// Proxy URL is set by user — stored in localStorage as 'pikdrop_proxy'
+// Format: https://your-worker.workers.dev/?  (with trailing ?)
+let customProxy = localStorage.getItem('pikdrop_proxy') || '';
+
+function getProxies() {
+  const list = [];
+  if (customProxy) list.push(url => customProxy + encodeURIComponent(url));
+  list.push(url => 'https://corsproxy.io/?' + encodeURIComponent(url));
+  return list;
+}
 const PP_AUTH = 'https://user.mypikpak.com/v1/auth/signin';
 const PP_API  = 'https://api-drive.mypikpak.com';
 const PP_CID  = 'YUMx5nI8ZU8Ap8pm';
@@ -222,6 +253,10 @@ let activeProxy = 0;
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 window.onload = () => {
+  if (customProxy) {
+    $('proxyUrl').value = customProxy;
+    badge('proxyBadge','configurado','ok');
+  }
   if (ppToken) {
     $('ppTokenIn').value = ppToken;
     showExpiry(ppToken);
@@ -285,7 +320,8 @@ function showExpiry(token) {
 
 // ── Proxy fetch with fallback ──────────────────────────────────────────────────
 async function proxyFetch(url, opts={}, proxyIdx=0) {
-  if (proxyIdx >= PROXIES.length) throw new Error('Todos os proxies falharam — verifique sua conexão');
+  const PROXIES = getProxies();
+  if (proxyIdx >= PROXIES.length) throw new Error('Proxy falhou — configure o Cloudflare Worker na barra lateral (seção Proxy).');
   const proxied = PROXIES[proxyIdx](url);
   try {
     const res = await fetch(proxied, {...opts, signal: AbortSignal.timeout(15000)});
@@ -303,6 +339,25 @@ async function proxyFetch(url, opts={}, proxyIdx=0) {
     // Try next proxy
     return proxyFetch(url, opts, proxyIdx+1);
   }
+}
+
+// ── Proxy Config ──────────────────────────────────────────────────────────────
+function saveProxy() {
+  let v = $('proxyUrl').value.trim();
+  if (!v) return setMsg('proxyMsg','Cole a URL do Worker','var(--red)');
+  if (!v.endsWith('?')) v += (v.endsWith('/') ? '?' : '/?');
+  customProxy = v;
+  localStorage.setItem('pikdrop_proxy', v);
+  $('proxyUrl').value = v;
+  badge('proxyBadge','configurado','ok');
+  setMsg('proxyMsg','✅ Proxy salvo — tente atualizar os arquivos agora','var(--ok)');
+}
+function clearProxy() {
+  customProxy = '';
+  localStorage.removeItem('pikdrop_proxy');
+  $('proxyUrl').value = '';
+  badge('proxyBadge','não configurado','idle');
+  setMsg('proxyMsg','Proxy removido','var(--muted)');
 }
 
 // ── PikPak Auth ───────────────────────────────────────────────────────────────
