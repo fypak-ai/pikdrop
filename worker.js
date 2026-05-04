@@ -1,9 +1,6 @@
-// PikDrop CORS Proxy — Cloudflare Worker
-// Deploy: https://workers.cloudflare.com/ → New Worker → cole este código → Save & Deploy
-
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request))
-})
+// PikDrop — Cloudflare Worker (all-in-one)
+// Serve o app em GET / e age como proxy CORS em GET/POST /?url=...
+// Deploy: workers.cloudflare.com → New Worker → cole este código → Save & Deploy
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -12,50 +9,719 @@ const CORS_HEADERS = {
   'Access-Control-Max-Age': '86400',
 }
 
+// PikPak domains allowed as proxy targets
+const ALLOWED_DOMAINS = ['mypikpak.com']
+
+const APP_HTML = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PikDrop — PikPak → Dropbox</title>
+<style>
+:root{--bg:#0f0f13;--card:#1a1a24;--border:#2a2a3a;--accent:#6c63ff;--accent2:#00d4aa;--red:#ff5555;--text:#e8e8f0;--muted:#888;--ok:#22c55e;--warn:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+a{color:var(--accent)}
+
+header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 22px;display:flex;align-items:center;gap:10px}
+header h1{font-size:1.35rem;font-weight:700}
+header span.brand{color:var(--accent)}
+.arrow{color:var(--accent2);font-size:1.2rem}
+.main{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 53px)}
+.sidebar{background:var(--card);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.sec{padding:14px 16px;border-bottom:1px solid var(--border)}
+.sec h3{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px}
+.content{display:flex;flex-direction:column;overflow:hidden}
+.toolbar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.files{flex:1;overflow-y:auto;padding:14px}
+
+input[type=text],input[type=email],input[type=password],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 11px;font-size:.83rem;margin-bottom:7px;outline:none;transition:border .15s;resize:vertical}
+input:focus,textarea:focus{border-color:var(--accent)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.row2 input{margin-bottom:0}
+
+button{border:none;border-radius:6px;cursor:pointer;font-size:.82rem;padding:7px 13px;font-weight:600;transition:opacity .15s,transform .1s}
+button:hover{opacity:.82}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.bp{background:var(--accent);color:#fff}
+.bs{background:var(--accent2);color:#000}
+.bd{background:var(--red);color:#fff}
+.bo{background:transparent;border:1px solid var(--border);color:var(--text)}
+.bw{background:#f59e0b;color:#000}
+.bsm{padding:5px 10px;font-size:.76rem}
+.bfull{width:100%;margin-bottom:6px}
+
+.badge{display:inline-block;border-radius:100px;padding:1px 9px;font-size:.7rem;font-weight:700}
+.b-ok{background:#14532d;color:#86efac}
+.b-err{background:#450a0a;color:#fca5a5}
+.b-idle{background:#1e1b4b;color:#a5b4fc}
+.b-warn{background:#451a03;color:#fcd34d}
+
+.tabs{display:flex;gap:4px;margin-bottom:10px}
+.tab{flex:1;padding:5px;border-radius:5px;font-size:.77rem;background:var(--bg);color:var(--muted);border:1px solid var(--border);cursor:pointer}
+.tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.file-list{display:flex;flex-direction:column;gap:3px}
+.fi{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;background:var(--card);border:1px solid var(--border);cursor:pointer;transition:border-color .15s;user-select:none}
+.fi:hover{border-color:var(--accent)}
+.fi.sel{border-color:var(--accent);background:#1e1b4b44}
+.fi-icon{font-size:1.3rem;min-width:26px;text-align:center}
+.fi-name{flex:1;font-size:.85rem;word-break:break-all;line-height:1.3}
+.fi-meta{color:var(--muted);font-size:.73rem;white-space:nowrap}
+
+.bc{display:flex;align-items:center;gap:3px;font-size:.78rem;color:var(--muted);padding:8px 0;flex-wrap:wrap}
+.bc span{cursor:pointer;color:var(--accent)}
+.bc span:hover{text-decoration:underline}
+
+.prog-wrap{margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px}
+.prog-bar-bg{background:var(--border);border-radius:100px;height:7px;overflow:hidden;margin:9px 0}
+.prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:100px;transition:width .4s;width:0%}
+.log{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:9px;max-height:160px;overflow-y:auto;font-size:.76rem;font-family:monospace;color:#aaa;margin-top:8px}
+.log p{margin-bottom:1px}
+.log .ok{color:var(--ok)}
+.log .err{color:var(--red)}
+.log .warn{color:var(--warn)}
+
+.hint{font-size:.73rem;color:var(--muted);margin-bottom:8px;line-height:1.4}
+.sel-bar{display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--muted);margin-bottom:9px}
+.sel-bar strong{color:var(--text)}
+.msg{font-size:.78rem;margin-top:5px;line-height:1.5}
+.dest-row{display:flex;gap:6px}
+.dest-row input{margin-bottom:0;flex:1}
+.notice{background:#1e1b4b44;border:1px solid var(--accent);border-radius:6px;padding:10px 12px;font-size:.8rem;line-height:1.5;margin-bottom:10px}
+.warn-box{background:#451a0344;border:1px solid var(--warn);border-radius:6px;padding:9px 12px;font-size:.79rem;line-height:1.5;margin-bottom:8px;color:var(--warn)}
+.empty{color:var(--muted);font-size:.85rem;padding:30px;text-align:center}
+.exp-tag{font-size:.72rem;padding:2px 7px;border-radius:4px;margin-left:5px}
+.exp-ok{background:#14532d;color:#86efac}
+.exp-bad{background:#450a0a;color:#fca5a5}
+
+@media(max-width:660px){
+  .main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .sidebar{max-height:55vh;border-right:none;border-bottom:1px solid var(--border)}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:1.5rem">☁</div>
+  <h1>Pik<span class="brand">Drop</span></h1>
+  <div class="arrow">→</div>
+  <div style="font-size:1.5rem">📦</div>
+  <div style="margin-left:auto;font-size:.75rem;color:var(--muted)">PikPak → Dropbox</div>
+</header>
+
+<div class="main">
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════════ -->
+<div class="sidebar">
+
+  <!-- Proxy -->
+  <div class="sec" style="background:#1a1a0e;border-left:3px solid var(--warn)">
+    <h3>🔧 Proxy CORS <span id="proxyBadge" class="badge b-idle">não configurado</span></h3>
+    <div id="proxySection"><p class="hint" style="color:var(--warn);margin-bottom:8px">⚠ Proxies públicos não repassam o header Authorization. Configure seu próprio proxy para o app funcionar.</p>
+    <p class="hint">Cole a URL do seu <strong>Cloudflare Worker</strong> (veja instruções abaixo):</p>
+    <input id="proxyUrl" type="text" placeholder="https://pikdrop.SEU-USUARIO.workers.dev/?"/>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button class="bw" style="flex:1" onclick="saveProxy()">💾 Salvar</button>
+      <button class="bo bsm" onclick="clearProxy()">✕</button>
+    </div>
+    <details style="margin-top:4px">
+      <summary style="font-size:.75rem;color:var(--accent);cursor:pointer;margin-bottom:6px">📖 Como criar o Worker (5 min, grátis)</summary>
+      <div class="hint" style="color:var(--text);line-height:1.7">
+        1. Acesse <a href="https://workers.cloudflare.com" target="_blank">workers.cloudflare.com</a> → conta grátis<br>
+        2. <strong>New Worker</strong> → apague o código padrão<br>
+        3. Cole o código do arquivo <code>worker.js</code> do GitHub<br>
+        4. Clique <strong>Save & Deploy</strong><br>
+        5. Copie a URL (ex: <code>pikdrop.xxx.workers.dev</code>)<br>
+        6. Cole acima com <code>/?</code> no final<br><br>
+        🔗 <a href="https://raw.githubusercontent.com/fypak-ai/pikdrop/main/worker.js" target="_blank">Ver código do worker.js</a>
+      </div>
+    </details>
+    </div><!-- /proxySection -->
+    <div id="proxyMsg" class="msg"></div>
+  </div>
+
+  <!-- PikPak -->
+  <div class="sec">
+    <h3>PikPak <span id="ppBadge" class="badge b-idle">desconectado</span></h3>
+
+    <div class="tabs">
+      <button class="tab" id="tabLogin" onclick="ppTab('login',this)">Email/Senha</button>
+      <button class="tab on" id="tabToken" onclick="ppTab('token',this)">Bearer Token ✓</button>
+    </div>
+
+    <div id="ppLoginForm" style="display:none">
+      <p class="hint">⚠ Login por email pode falhar por CORS. Use o Bearer Token se der erro.</p>
+      <div class="row2">
+        <input id="ppEmail" type="email"    placeholder="Email"/>
+        <input id="ppPass"  type="password" placeholder="Senha"/>
+      </div>
+      <button class="bp bfull" style="margin-top:6px" onclick="ppLogin()">Entrar</button>
+    </div>
+
+    <div id="ppTokenForm">
+      <p class="hint">Cole o Bearer token. Tokens PikPak expiram em ~2 horas — gere um novo se der erro 401.</p>
+      <p class="hint">🔑 <strong>Como obter:</strong> abra o PikPak no browser, F12 → Network → qualquer requisição → copie o header <code>Authorization</code></p>
+      <textarea id="ppTokenIn" rows="3" placeholder="Cole aqui (com ou sem 'Bearer ')"></textarea>
+      <div id="ppExpiry" style="margin-bottom:7px"></div>
+      <div style="display:flex;gap:6px">
+        <button class="bp" style="flex:1" onclick="ppSetToken()">💾 Salvar token</button>
+        <button class="bw bsm" onclick="ppVerify()">🔍 Testar</button>
+      </div>
+    </div>
+
+    <div id="ppMsg" class="msg"></div>
+  </div>
+
+  <!-- Dropbox -->
+  <div class="sec">
+    <h3>Dropbox <span id="dbBadge" class="badge b-idle">desconectado</span></h3>
+    <p class="hint">Gere em <a href="https://www.dropbox.com/developers/apps" target="_blank">dropbox.com/developers</a><br>
+    Permissões <strong>antes</strong> de gerar: <code>files.content.write</code> + <code>files.content.read</code></p>
+    <input id="dbTokenIn" type="text" placeholder="sl.u.AGUO…"/>
+    <button class="bs bfull" onclick="dbTest()">🔍 Testar & Salvar</button>
+    <div id="dbMsg" class="msg"></div>
+  </div>
+
+  <!-- Destino -->
+  <div class="sec">
+    <h3>Pasta Destino (Dropbox)</h3>
+    <div class="dest-row">
+      <input id="destFolder" type="text" value="/PikPak" placeholder="/PikPak"/>
+    </div>
+  </div>
+
+  <!-- Transfer -->
+  <div class="sec" style="flex:1">
+    <h3>Transferência</h3>
+    <div class="notice">
+      💡 <strong>Server-to-Server</strong><br>
+      O Dropbox baixa direto do PikPak — sem passar pelo browser.
+    </div>
+    <div class="sel-bar">
+      <strong id="selCount">0</strong> selecionado(s)
+      <button class="bo bsm" onclick="clearSel()">Limpar</button>
+    </div>
+    <button class="bs bfull" onclick="startTransfer()">▶ Iniciar Transferência</button>
+    <button class="bd bsm bfull" onclick="cancelAll()">✕ Cancelar tudo</button>
+
+    <div id="progWrap" style="display:none" class="prog-wrap">
+      <div style="display:flex;justify-content:space-between;font-size:.78rem">
+        <span id="progLabel">Aguardando…</span>
+        <span id="progPct">0%</span>
+      </div>
+      <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill"></div></div>
+      <div class="log" id="logBox"></div>
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- ══ CONTENT ═══════════════════════════════════════════════ -->
+<div class="content">
+  <div class="toolbar">
+    <div class="bc" id="bc"><span onclick="navTo('','Início')">🏠 Início</span></div>
+    <div style="margin-left:auto;display:flex;gap:7px">
+      <button class="bo bsm" onclick="selAll()">Sel. todos</button>
+      <button class="bp bsm" onclick="loadFiles()">🔄 Atualizar</button>
+    </div>
+  </div>
+  <div class="files">
+    <div id="fileList" class="file-list">
+      <div class="empty">Cole o Bearer Token do PikPak → Salvar → Atualizar</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+'use strict';
+
+// ── Config ───────────────────────────────────────────────────────────────────
+// Auto-detect: if running on workers.dev, use self as proxy (no config needed)
+const _host = window.location.hostname;
+const _selfIsWorker = _host.includes('.workers.dev') || _host.endsWith('.fypak.') || _host.includes('fypak.');
+const _autoProxy = _selfIsWorker ? (window.location.origin + '/?') : '';
+let customProxy = localStorage.getItem('pikdrop_proxy') || _autoProxy;
+
+function getProxies() {
+  const list = [];
+  if (customProxy) list.push(url => customProxy + encodeURIComponent(url));
+  list.push(url => 'https://corsproxy.io/?' + encodeURIComponent(url));
+  return list;
+}
+const PP_AUTH = 'https://user.mypikpak.com/v1/auth/signin';
+const PP_API  = 'https://api-drive.mypikpak.com';
+const PP_CID  = 'YUMx5nI8ZU8Ap8pm';
+const PP_SEC  = 'dbw2OAv3zbb7TavDEsGSA7uTany';
+const DBX     = 'https://api.dropboxapi.com/2';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let ppToken  = localStorage.getItem('pp_token') || '';
+let dbToken  = localStorage.getItem('db_token') || '';
+let selected = {};
+let crumbs   = [{id:'',name:'Início'}];
+let jobs     = {};
+let activeProxy = 0;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  // Auto-proxy mode: hide config section, show status
+  if (_selfIsWorker) {
+    const sec = document.getElementById('proxySection');
+    if (sec) sec.innerHTML = '<p style="font-size:.75rem;color:var(--ok);padding:4px 0">✅ Proxy automático ativo (Workers)</p>';
+    badge('proxyBadge','auto','ok');
+  } else if (customProxy) {
+    $('proxyUrl').value = customProxy;
+    badge('proxyBadge','configurado','ok');
+  }
+  if (ppToken) {
+    $('ppTokenIn').value = ppToken;
+    showExpiry(ppToken);
+    if (!isExpired(ppToken)) {
+      badge('ppBadge','conectado','ok');
+      setMsg('ppMsg','✅ Token carregado','var(--ok)');
+    } else {
+      badge('ppBadge','expirado','warn');
+      setMsg('ppMsg','⚠ Token expirado — cole um novo','var(--warn)');
+    }
+  }
+  if (dbToken) {
+    badge('dbBadge','conectado','ok');
+    $('dbTokenIn').value = dbToken;
+  }
+
+  // Auto-strip on paste
+  $('ppTokenIn').addEventListener('input', () => {
+    showExpiry($('ppTokenIn').value.trim().replace(/^Bearer\\s+/i,''));
+  });
+};
+
+// ── UI Helpers ────────────────────────────────────────────────────────────────
+const $      = id => document.getElementById(id);
+const setMsg = (id,t,c) => { $(id).textContent=t; $(id).style.color=c||''; };
+const badge  = (id,t,s) => { const e=$(id); e.textContent=t; e.className='badge b-'+s; };
+
+function ppTab(name, btn) {
+  document.querySelectorAll('.tabs .tab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  $('ppLoginForm').style.display = name==='login'?'':'none';
+  $('ppTokenForm').style.display = name==='token'?'':'none';
+}
+
+// ── JWT helpers ───────────────────────────────────────────────────────────────
+function decodeJWT(token) {
+  try {
+    const raw = token.split('.')[1];
+    const padded = raw.replace(/-/g,'+').replace(/_/g,'/') + '=='.slice((raw.length+2)%4||2);
+    return JSON.parse(atob(padded));
+  } catch(e) { return null; }
+}
+function isExpired(token) {
+  const p = decodeJWT(token);
+  if (!p || !p.exp) return false;
+  return Date.now()/1000 > p.exp;
+}
+function showExpiry(token) {
+  const p = decodeJWT(token);
+  const el = $('ppExpiry');
+  if (!p || !p.exp) { el.innerHTML=''; return; }
+  const exp = new Date(p.exp * 1000);
+  const now = Date.now();
+  const expired = now/1000 > p.exp;
+  const diff = Math.round((p.exp - now/1000)/60);
+  const label = expired
+    ? \`❌ Expirado em \${exp.toLocaleTimeString('pt-BR')} — gere um novo token\`
+    : \`✅ Válido por mais \${diff} min (expira \${exp.toLocaleTimeString('pt-BR')})\`;
+  el.innerHTML = \`<span class="exp-tag \${expired?'exp-bad':'exp-ok'}">\${label}</span>\`;
+}
+
+// ── Proxy fetch with fallback ──────────────────────────────────────────────────
+async function proxyFetch(url, opts={}, proxyIdx=0) {
+  const PROXIES = getProxies();
+  if (proxyIdx >= PROXIES.length) throw new Error('Proxy falhou — configure o Cloudflare Worker na barra lateral (seção Proxy).');
+  const proxied = PROXIES[proxyIdx](url);
+  try {
+    const res = await fetch(proxied, {...opts, signal: AbortSignal.timeout(15000)});
+    if (!res.ok) {
+      let msg = res.statusText;
+      try { const d=await res.clone().json(); msg = d.error_description||d.error||d.message||msg; } catch(e){}
+      if (res.status===401) throw new Error('TOKEN_EXPIRED:'+msg);
+      if (res.status===429) throw new Error('Rate limit — aguarde e tente de novo');
+      throw new Error(\`\${res.status}: \${msg}\`);
+    }
+    activeProxy = proxyIdx;
+    return res.json();
+  } catch(e) {
+    if (e.message.startsWith('TOKEN_EXPIRED')) throw e;
+    // Try next proxy
+    return proxyFetch(url, opts, proxyIdx+1);
+  }
+}
+
+// ── Proxy Config ──────────────────────────────────────────────────────────────
+function saveProxy() {
+  let v = $('proxyUrl').value.trim();
+  if (!v) return setMsg('proxyMsg','Cole a URL do Worker','var(--red)');
+  if (!v.endsWith('?')) v += (v.endsWith('/') ? '?' : '/?');
+  customProxy = v;
+  localStorage.setItem('pikdrop_proxy', v);
+  $('proxyUrl').value = v;
+  badge('proxyBadge','configurado','ok');
+  setMsg('proxyMsg','✅ Proxy salvo — tente atualizar os arquivos agora','var(--ok)');
+}
+function clearProxy() {
+  customProxy = '';
+  localStorage.removeItem('pikdrop_proxy');
+  $('proxyUrl').value = '';
+  badge('proxyBadge','não configurado','idle');
+  setMsg('proxyMsg','Proxy removido','var(--muted)');
+}
+
+// ── PikPak Auth ───────────────────────────────────────────────────────────────
+async function ppLogin() {
+  const email = $('ppEmail').value.trim();
+  const pass  = $('ppPass').value.trim();
+  if (!email||!pass) return setMsg('ppMsg','Email e senha obrigatórios','var(--red)');
+  setMsg('ppMsg','⏳ Autenticando…','var(--muted)');
+  try {
+    const d = await proxyFetch(PP_AUTH, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({client_id:PP_CID,client_secret:PP_SEC,username:email,password:pass})
+    });
+    ppToken = d.access_token;
+    localStorage.setItem('pp_token', ppToken);
+    $('ppTokenIn').value = ppToken;
+    showExpiry(ppToken);
+    badge('ppBadge','conectado','ok');
+    setMsg('ppMsg','✅ Logado','var(--ok)');
+    loadFiles();
+  } catch(e) {
+    badge('ppBadge','erro','err');
+    const msg = e.message.includes('TOKEN_EXPIRED')
+      ? '❌ Token expirado — gere um novo' : '❌ '+e.message;
+    setMsg('ppMsg', msg, 'var(--red)');
+  }
+}
+
+function ppSetToken() {
+  const raw = $('ppTokenIn').value.trim().replace(/^Bearer\\s+/i,'');
+  if (!raw) return setMsg('ppMsg','Cole o token primeiro','var(--red)');
+  if (isExpired(raw)) {
+    setMsg('ppMsg','⚠ Este token já expirou! Tokens PikPak duram ~2h. Cole um token novo.','var(--warn)');
+    badge('ppBadge','expirado','warn');
+    return;
+  }
+  ppToken = raw;
+  localStorage.setItem('pp_token', ppToken);
+  badge('ppBadge','conectado','ok');
+  setMsg('ppMsg','✅ Token salvo','var(--ok)');
+}
+
+async function ppVerify() {
+  const raw = $('ppTokenIn').value.trim().replace(/^Bearer\\s+/i,'');
+  if (!raw) return setMsg('ppMsg','Cole o token primeiro','var(--red)');
+  if (isExpired(raw)) {
+    setMsg('ppMsg','❌ Token expirado (pela data de validade do JWT). Gere um novo.','var(--red)');
+    badge('ppBadge','expirado','warn');
+    return;
+  }
+  setMsg('ppMsg','⏳ Testando token…','var(--muted)');
+  try {
+    const params = new URLSearchParams({parent_id:'',limit:1,filters:JSON.stringify({trashed:{eq:false}})});
+    await proxyFetch(PP_API+'/drive/v1/files?'+params, {headers:{'Authorization':'Bearer '+raw}});
+    ppToken = raw;
+    localStorage.setItem('pp_token', ppToken);
+    badge('ppBadge','conectado','ok');
+    setMsg('ppMsg','✅ Token válido e funcionando!','var(--ok)');
+    loadFiles();
+  } catch(e) {
+    badge('ppBadge','erro','err');
+    if (e.message.includes('TOKEN_EXPIRED') || e.message.includes('401')) {
+      setMsg('ppMsg','❌ Token recusado (401) — provavelmente expirado. Cole um novo.','var(--red)');
+    } else {
+      setMsg('ppMsg','❌ '+e.message,'var(--red)');
+    }
+  }
+}
+
+// ── Dropbox Auth ──────────────────────────────────────────────────────────────
+async function dbTest() {
+  const t = $('dbTokenIn').value.trim();
+  if (!t) return setMsg('dbMsg','Token vazio','var(--red)');
+  setMsg('dbMsg','⏳ Verificando…','var(--muted)');
+  try {
+    const r = await fetch(DBX+'/users/get_current_account', {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},
+      body:'null'
+    });
+    if (!r.ok) throw new Error((await r.json()).error_summary||r.statusText);
+    const u = await r.json();
+    dbToken = t;
+    localStorage.setItem('db_token', dbToken);
+    badge('dbBadge','conectado','ok');
+    setMsg('dbMsg','✅ '+u.name.display_name+' ('+u.email+')','var(--ok)');
+  } catch(e) {
+    badge('dbBadge','erro','err');
+    setMsg('dbMsg','❌ '+e.message,'var(--red)');
+  }
+}
+
+// ── File Browser ──────────────────────────────────────────────────────────────
+async function loadFiles(parentId, pageToken) {
+  parentId  = parentId !== undefined ? parentId : crumbs[crumbs.length-1].id;
+  pageToken = pageToken || '';
+  const list = $('fileList');
+  if (!pageToken) list.innerHTML='<div class="empty">⏳ Carregando…</div>';
+  if (!ppToken) {
+    list.innerHTML='<div class="empty" style="color:var(--red)">Cole o Bearer Token do PikPak e clique em Salvar.</div>';
+    return;
+  }
+  if (isExpired(ppToken)) {
+    list.innerHTML='<div class="empty" style="color:var(--warn)">⚠ Token PikPak expirado. Cole um novo token na barra lateral.</div>';
+    badge('ppBadge','expirado','warn');
+    return;
+  }
+  try {
+    const params = new URLSearchParams({
+      parent_id: parentId,
+      thumbnail_size:'SIZE_SMALL',
+      filters: JSON.stringify({trashed:{eq:false}}),
+      limit: 100
+    });
+    if (pageToken) params.set('page_token', pageToken);
+    const data = await proxyFetch(PP_API+'/drive/v1/files?'+params, {
+      headers:{'Authorization':'Bearer '+ppToken}
+    });
+    if (!pageToken) list.innerHTML='';
+    const files = data.files||[];
+    if (!files.length && !pageToken) { list.innerHTML='<div class="empty">Pasta vazia.</div>'; return; }
+    files.forEach(f => {
+      const isDir = f.kind==='drive#folder';
+      const icon  = isDir ? '📁' : getIcon(f.name);
+      const size  = (!isDir && f.size) ? fmtSize(f.size) : '';
+      const div   = document.createElement('div');
+      div.className = 'fi'+(selected[f.id]?' sel':'');
+      div.dataset.id = f.id;
+      div.innerHTML = \`<div class="fi-icon">\${icon}</div><div class="fi-name">\${esc(f.name)}</div><div class="fi-meta">\${size}</div>\`;
+      div.onclick = () => {
+        if (isDir) { enterFolder(f.id, f.name); return; }
+        toggleSel(f.id, {id:f.id, name:f.name, size:f.size}, div);
+      };
+      list.appendChild(div);
+    });
+    if (data.next_page_token) {
+      const btn = document.createElement('button');
+      btn.className='bo bsm'; btn.style='margin:12px auto;display:block';
+      btn.textContent='Carregar mais…';
+      btn.onclick = () => { btn.remove(); loadFiles(parentId, data.next_page_token); };
+      list.appendChild(btn);
+    }
+  } catch(e) {
+    if (e.message.includes('TOKEN_EXPIRED') || e.message.includes('401')) {
+      list.innerHTML='<div class="empty" style="color:var(--warn)">⚠ Token expirado — cole um novo na barra lateral.</div>';
+      badge('ppBadge','expirado','warn');
+      setMsg('ppMsg','⚠ Token expirado. Tokens duram ~2h — gere um novo.','var(--warn)');
+    } else {
+      list.innerHTML=\`<div class="empty" style="color:var(--red)">Erro: \${esc(e.message)}</div>\`;
+    }
+  }
+}
+
+function enterFolder(id, name) { crumbs.push({id,name}); renderBc(); loadFiles(id); }
+function navTo(id, name) {
+  const idx = crumbs.findIndex(c=>c.id===id);
+  crumbs = idx>=0 ? crumbs.slice(0,idx+1) : [{id:'',name:'Início'}];
+  renderBc(); loadFiles(id);
+}
+function renderBc() {
+  $('bc').innerHTML = crumbs.map((c,i)=>{
+    const sep = i>0?'<span style="color:var(--muted)"> / </span>':'';
+    return \`\${sep}<span onclick="navTo('\${c.id}','\${esc(c.name)}')">\${i===0?'🏠 ':''}\${esc(c.name)}</span>\`;
+  }).join('');
+}
+function toggleSel(id, info, el) {
+  if (selected[id]) { delete selected[id]; el.classList.remove('sel'); }
+  else              { selected[id]=info;    el.classList.add('sel'); }
+  $('selCount').textContent = Object.keys(selected).length;
+}
+function selAll() {
+  document.querySelectorAll('.fi').forEach(el=>{
+    if (el.querySelector('.fi-icon').textContent==='📁') return;
+    const id = el.dataset.id;
+    selected[id]={id, name:el.querySelector('.fi-name').textContent};
+    el.classList.add('sel');
+  });
+  $('selCount').textContent = Object.keys(selected).length;
+}
+function clearSel() {
+  selected={};
+  document.querySelectorAll('.fi.sel').forEach(e=>e.classList.remove('sel'));
+  $('selCount').textContent=0;
+}
+
+// ── Transfer ───────────────────────────────────────────────────────────────────
+async function startTransfer() {
+  const ids = Object.keys(selected);
+  if (!ids.length)  return alert('Selecione ao menos um arquivo.');
+  if (!ppToken)     return alert('Cole o token PikPak primeiro.');
+  if (isExpired(ppToken)) return alert('Token PikPak expirado! Cole um novo token.');
+  if (!dbToken)     return alert('Configure o Dropbox primeiro.');
+  const dest = $('destFolder').value.trim() || '/PikPak';
+  $('progWrap').style.display='';
+  clearLog(); jobs={};
+  setProgress(0, \`Iniciando \${ids.length} arquivo(s)…\`);
+  let done=0, errors=0;
+  for (const id of ids) {
+    const info = selected[id];
+    logLine(\`⬇ Obtendo URL: \${info.name}\`);
+    try {
+      const fdata = await proxyFetch(PP_API+'/drive/v1/files/'+id, {
+        headers:{'Authorization':'Bearer '+ppToken}
+      });
+      const url = fdata.web_content_link || ((fdata.medias||[{}])[0].link||{}).url || '';
+      if (!url) throw new Error('URL vazia — arquivo pode ter expirado');
+      const fname = fdata.name||info.name;
+      logLine(\`📤 "\${fname}" → Dropbox (server-to-server)…\`, 'warn');
+      const dbPath = dest.replace(/\\/$/,'')+'/'+fname;
+      const sRes = await fetch(DBX+'/files/save_url', {
+        method:'POST',
+        headers:{'Authorization':'Bearer '+dbToken,'Content-Type':'application/json'},
+        body:JSON.stringify({path:dbPath, url})
+      });
+      const sData = await sRes.json();
+      if (sData['.tag']==='complete') {
+        logLine(\`✅ Salvo em \${sData.path_display||dbPath}\`, 'ok');
+        done++;
+      } else if (sData['.tag']==='async_job_id') {
+        jobs[sData.async_job_id]={name:fname, path:dbPath, status:'running'};
+        logLine(\`⏳ "\${fname}" em fila (job \${sData.async_job_id.slice(0,8)}…)\`, 'warn');
+      } else {
+        throw new Error(JSON.stringify(sData.error||sData));
+      }
+    } catch(e) {
+      const msg = e.message.includes('TOKEN_EXPIRED')||e.message.includes('401')
+        ? \`❌ Token PikPak expirou durante a transferência. Gere um novo e tente de novo.\`
+        : \`❌ Erro em "\${info.name}": \${e.message}\`;
+      logLine(msg, 'err'); errors++;
+    }
+    setProgress(Math.round(((done+errors)/ids.length)*80), \`\${done+errors}/\${ids.length} processados…\`);
+  }
+  if (Object.keys(jobs).length) {
+    logLine(\`⏳ Aguardando \${Object.keys(jobs).length} job(s) assíncronos…\`, 'warn');
+    await pollJobs(done, errors, ids.length);
+  } else {
+    setProgress(100, \`✅ \${done} enviado(s)\${errors?' · '+errors+' erro(s)':''}\`);
+  }
+}
+
+async function pollJobs(doneSoFar, errorsSoFar, total) {
+  for (let i=0; i<60; i++) {
+    await sleep(3000);
+    const pending = Object.entries(jobs).filter(([,v])=>v.status==='running');
+    if (!pending.length) break;
+    for (const [jid, info] of pending) {
+      try {
+        const r = await fetch(DBX+'/files/save_url/check_job_status', {
+          method:'POST',
+          headers:{'Authorization':'Bearer '+dbToken,'Content-Type':'application/json'},
+          body:JSON.stringify({async_job_id:jid})
+        });
+        const d = await r.json();
+        if (d['.tag']==='complete')      { jobs[jid].status='done';   doneSoFar++;   logLine(\`✅ "\${info.name}" salvo\`, 'ok'); }
+        else if (d['.tag']==='failed')   { jobs[jid].status='failed'; errorsSoFar++; logLine(\`❌ "\${info.name}" falhou: \${JSON.stringify(d.failed||d)}\`, 'err'); }
+      } catch(e) { /* transient */ }
+    }
+    const rem = Object.values(jobs).filter(v=>v.status==='running').length;
+    setProgress(Math.min(99,80+Math.round(((doneSoFar+errorsSoFar)/total)*20)), \`\${doneSoFar+errorsSoFar}/\${total} · \${rem} pendente(s)…\`);
+    if (!rem) break;
+  }
+  setProgress(100, \`✅ \${doneSoFar} enviado(s)\${errorsSoFar?' · '+errorsSoFar+' erro(s)':''}\`);
+}
+
+function cancelAll() { jobs={}; logLine('🚫 Cancelado.','warn'); setProgress(0,'Cancelado'); }
+
+// ── Utils ──────────────────────────────────────────────────────────────────────
+function setProgress(pct,label){ $('progFill').style.width=pct+'%'; $('progPct').textContent=pct+'%'; $('progLabel').textContent=label; }
+function clearLog(){ $('logBox').innerHTML=''; }
+function logLine(msg,cls){ const p=document.createElement('p'); if(cls) p.className=cls; p.textContent=msg; $('logBox').appendChild(p); $('logBox').scrollTop=9999; }
+function fmtSize(b){ b=parseInt(b); if(b>1e9) return (b/1e9).toFixed(1)+' GB'; if(b>1e6) return (b/1e6).toFixed(1)+' MB'; if(b>1e3) return (b/1e3).toFixed(0)+' KB'; return b+' B'; }
+function getIcon(n=''){ const e=n.split('.').pop().toLowerCase(); return {mp4:'🎬',mkv:'🎬',avi:'🎬',mov:'🎬',webm:'🎬',mp3:'🎵',flac:'🎵',wav:'🎵',aac:'🎵',jpg:'🖼',jpeg:'🖼',png:'🖼',gif:'🖼',webp:'🖼',pdf:'📕',zip:'🗜',rar:'🗜','7z':'🗜',txt:'📝',doc:'📝',docx:'📝',srt:'📝'}[e]||'📄'; }
+function esc(s=''){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>
+`
+
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request))
+})
+
 async function handleRequest(request) {
-  // Handle preflight
+  const url = new URL(request.url)
+
+  // Preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: CORS_HEADERS })
   }
 
-  const url = new URL(request.url)
-  // Expect: https://your-worker.workers.dev/?https://api-drive.mypikpak.com/...
-  const rawSearch = url.search.slice(1) // strip leading '?'
-  const target = url.searchParams.get('url') || decodeURIComponent(rawSearch)
+  // Serve app HTML at root (no ?url param)
+  const rawSearch = url.search.slice(1)
+  const hasTarget = url.searchParams.has('url') || (rawSearch && rawSearch.startsWith('http'))
+  if (!hasTarget && url.pathname === '/') {
+    return new Response(APP_HTML, {
+      headers: { 'Content-Type': 'text/html;charset=UTF-8' }
+    })
+  }
 
-  // Security: only allow PikPak domains
-  const ALLOWED = ['mypikpak.com', 'user.mypikpak.com', 'api-drive.mypikpak.com']
+  // CORS proxy
+  const target = url.searchParams.get('url') || decodeURIComponent(rawSearch)
   let targetUrl
   try {
     targetUrl = new URL(target)
   } catch(e) {
-    return new Response('Invalid URL', { status: 400, headers: CORS_HEADERS })
-  }
-  if (!ALLOWED.some(d => targetUrl.hostname.endsWith(d))) {
-    return new Response('Domain not allowed', { status: 403, headers: CORS_HEADERS })
+    return new Response('URL inválida', { status: 400, headers: CORS_HEADERS })
   }
 
-  // Forward request
+  // Security: only allow PikPak domains
+  if (!ALLOWED_DOMAINS.some(d => targetUrl.hostname === d || targetUrl.hostname.endsWith('.' + d))) {
+    return new Response('Domínio não permitido: ' + targetUrl.hostname, { status: 403, headers: CORS_HEADERS })
+  }
+
+  // Forward all headers (except host/origin/cf-*)
   const fwdHeaders = new Headers()
   for (const [k, v] of request.headers.entries()) {
-    if (!['host','origin','referer','cf-connecting-ip','x-forwarded-for'].includes(k.toLowerCase())) {
+    const lower = k.toLowerCase()
+    if (!['host','origin','referer','cf-connecting-ip','x-forwarded-for','x-real-ip'].includes(lower) && !lower.startsWith('cf-')) {
       fwdHeaders.set(k, v)
     }
   }
 
   const body = ['GET','HEAD'].includes(request.method) ? undefined : await request.arrayBuffer()
 
-  const resp = await fetch(target, {
-    method: request.method,
-    headers: fwdHeaders,
-    body: body,
-  })
+  try {
+    const resp = await fetch(target, {
+      method: request.method,
+      headers: fwdHeaders,
+      body,
+    })
 
-  const outHeaders = new Headers(CORS_HEADERS)
-  outHeaders.set('Content-Type', resp.headers.get('Content-Type') || 'application/json')
+    const outHeaders = new Headers(CORS_HEADERS)
+    const ct = resp.headers.get('Content-Type')
+    if (ct) outHeaders.set('Content-Type', ct)
 
-  return new Response(resp.body, {
-    status: resp.status,
-    headers: outHeaders,
-  })
+    return new Response(resp.body, {
+      status: resp.status,
+      headers: outHeaders,
+    })
+  } catch(e) {
+    return new Response('Erro ao conectar: ' + e.message, { status: 502, headers: CORS_HEADERS })
+  }
 }
